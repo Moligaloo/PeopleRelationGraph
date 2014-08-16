@@ -15,6 +15,8 @@ public:
 
 private slots:
     void addPeople();
+    void cropAndAddPeople();
+    void addPeopleFile(const QString &filename);
 
 private:
     QGraphicsScene *scene_;

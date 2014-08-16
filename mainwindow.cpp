@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "imagecropdialog.h"
 
 #include <QGraphicsView>
 #include <QGraphicsScene>
@@ -13,7 +14,6 @@
 #include <QTextCursor>
 #include <QtDebug>
 
-
 class PeopleNode: public QGraphicsPixmapItem{
 public:
     PeopleNode(const QString &filename){
@@ -23,6 +23,8 @@ public:
         QPixmap pixmap(filename);
         pixmap = pixmap.scaled(QSize(100, 100), Qt::KeepAspectRatio, Qt::SmoothTransformation);
         setPixmap(pixmap);
+
+        filename_ = filename;
 
         nameItem_ = new QGraphicsTextItem(this);
         nameItem_->setPos(0, 100);
@@ -34,7 +36,12 @@ public:
         format.setAlignment(Qt::AlignHCenter);
 
         nameItem_->textCursor().setBlockFormat(format);
-        nameItem_->textCursor().insertText(QFileInfo(filename).baseName());
+
+        QString basename = QFileInfo(filename).baseName();
+        if(basename.endsWith("_cropped"))
+            basename.remove("_cropped");
+
+        nameItem_->textCursor().insertText(basename);
     }
 
 private:
@@ -47,20 +54,6 @@ private:
             painter->setPen(pen);
             painter->drawRect(boundingRect());
         }
-    }
-
-    virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event){
-        QGraphicsPixmapItem::mouseDoubleClickEvent(event);
-
-        event->accept();
-
-        QString newName = QInputDialog::getText(NULL,
-                                                QObject::tr("Modify name"),
-                                                QObject::tr("Please input the new name:"),
-                                                QLineEdit::Normal,
-                                                nameItem_->toPlainText());
-        if(newName.isEmpty())
-            nameItem_->setPlainText(newName);
     }
 
     QString filename_;
@@ -80,7 +73,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     QMenu *fileMenu = new QMenu(tr("File"));
 
-    fileMenu->addAction(tr("Add People"), this, SLOT(addPeople()), Qt::CTRL + Qt::Key_N);
+    fileMenu->addAction(tr("Add People"), this, SLOT(addPeople()), Qt::CTRL + Qt::Key_1);
+    fileMenu->addAction(tr("Crop and Add People"), this, SLOT(cropAndAddPeople()), Qt::CTRL + Qt::Key_2);
 
     menuBar()->addMenu(fileMenu);
 
@@ -88,12 +82,27 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 void MainWindow::addPeople(){
-    QString filename = QFileDialog::getOpenFileName(this, tr("Select a people image"), QString(), tr("PNG file (*.png)"));
+    QString filename = QFileDialog::getOpenFileName(this, tr("Select a people image (cropped)"), QString(), tr("Image files (*.jpg *.png)"));
     if(filename.isEmpty())
         return;
 
+    addPeopleFile(filename);
+}
+
+void MainWindow::addPeopleFile(const QString &filename){
     PeopleNode *people = new PeopleNode(filename);
     scene_->addItem(people);
+}
+
+void MainWindow::cropAndAddPeople(){
+    QString filename = QFileDialog::getOpenFileName(this, tr("Select a people image (not cropped)"), QString(), tr("Image files (*.jpg *.png)"));
+    if(filename.isEmpty())
+        return;
+
+    ImageCropDialog *dialog = new ImageCropDialog(filename,this);
+    connect(dialog, SIGNAL(imageCropped(QString)), this, SLOT(addPeopleFile(QString)));
+
+    dialog->exec();
 }
 
 MainWindow::~MainWindow()

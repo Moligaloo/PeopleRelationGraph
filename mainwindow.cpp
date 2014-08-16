@@ -18,6 +18,8 @@
 
 static const qreal kPeopleNodeRadius = 50;
 static const qreal kConnectorGap = 10;
+static const qreal kArrowLength = 10;
+static const qreal kArrowAngle = M_PI / 6;
 
 class PeopleConnector;
 
@@ -35,6 +37,12 @@ public:
         label_->setTextInteractionFlags(Qt::TextEditorInteraction);
         label_->setPlainText(QObject::tr("Text"));
         label_->hide();
+
+        arrow[0] = new QGraphicsLineItem;
+        arrow[1] = new QGraphicsLineItem;
+
+        arrow[0]->setParentItem(this);
+        arrow[1]->setParentItem(this);
     }
 
     void set(QGraphicsItem *start, QGraphicsItem *end){
@@ -72,6 +80,29 @@ public:
 
         setLine(line);
 
+        QPointF d = p1-p2;
+
+        {
+            static const qreal sinv = sin(kArrowAngle);
+            static const qreal cosv = cos(kArrowAngle);
+
+            QPointF vec;
+            vec.setX(d.x() * cosv - d.y() * sinv);
+            vec.setY(d.x() * sinv + d.y() * cosv);
+
+            qreal ratio = qSqrt(vec.x() * vec.x() + vec.y() * vec.y())/kArrowLength;
+
+            vec /= ratio;
+
+            arrow[0]->setLine(QLineF(p2, p2 + vec));
+
+            vec.setX(d.x() * cosv + d.y() * sinv);
+            vec.setY(-d.x() * sinv + d.y() * cosv);
+            vec /= ratio;
+
+            arrow[1]->setLine(QLineF(p2, p2 + vec));
+        }
+
         label_->setPos((c1+c2)/2);
     }
 
@@ -80,6 +111,8 @@ private:
     QGraphicsItem *end_;
 
     QGraphicsTextItem *label_;
+
+    QGraphicsLineItem *arrow[2];
 };
 
 QGraphicsItem *FindPeopleNodeUnderMouse();

@@ -30,6 +30,11 @@ public:
         pen.setWidth(2);
 
         setPen(pen);
+
+        label_ = new QGraphicsTextItem(this);
+        label_->setTextInteractionFlags(Qt::TextEditorInteraction);
+        label_->setPlainText(QObject::tr("Text"));
+        label_->hide();
     }
 
     void set(QGraphicsItem *start, QGraphicsItem *end){
@@ -43,6 +48,10 @@ public:
 
     QGraphicsItem *end() const{
         return end_;
+    }
+
+    void showLabel(){
+        label_->show();
     }
 
     void updatePos(){
@@ -62,11 +71,15 @@ public:
         line.setP2(p2);
 
         setLine(line);
+
+        label_->setPos((c1+c2)/2);
     }
 
 private:
     QGraphicsItem *start_;
     QGraphicsItem *end_;
+
+    QGraphicsTextItem *label_;
 };
 
 QGraphicsItem *FindPeopleNodeUnderMouse();
@@ -111,7 +124,7 @@ public:
                 g_PeopleConnectors << connector_;
 
                 connector_->updatePos();
-
+                connector_->showLabel();
 
             }else
                 delete connector_;
@@ -234,6 +247,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     scene_ = scene;
 }
+
 
 void MainWindow::addPeople(){
     QString filename = QFileDialog::getOpenFileName(this, tr("Select a people image (cropped)"), QString(), tr("Image files (*.jpg *.png)"));

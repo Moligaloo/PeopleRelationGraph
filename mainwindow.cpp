@@ -13,6 +13,7 @@
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QtDebug>
+#include <QDomDocument>
 
 #include <qmath.h>
 
@@ -56,6 +57,14 @@ public:
 
     QGraphicsItem *end() const{
         return end_;
+    }
+
+    QString label() const{
+        return label_->toPlainText();
+    }
+
+    void setLabel(const QString &string){
+        label_->setPlainText(string);
     }
 
     void showLabel(){
@@ -212,6 +221,18 @@ public:
         g_PeopleNodes << this;
     }
 
+    void setLabel(const QString &string){
+        nameItem_->setPlainText(string);
+    }
+
+    QString filename() const{
+        return filename_;
+    }
+
+    QString label() const{
+        return nameItem_->toPlainText();
+    }
+
 protected:
     virtual void focusInEvent(QFocusEvent *event){
         QGraphicsPixmapItem::focusInEvent(event);
@@ -273,14 +294,133 @@ MainWindow::MainWindow(QWidget *parent)
 
     QMenu *fileMenu = new QMenu(tr("File"));
 
+
+    fileMenu->addAction(tr("Open"), this, SLOT(open()), QKeySequence::Open);
+    fileMenu->addAction(tr("Save"), this, SLOT(save()), QKeySequence::Save);
+
+    fileMenu->addSeparator();
+
     fileMenu->addAction(tr("Add People"), this, SLOT(addPeople()), Qt::CTRL + Qt::Key_1);
     fileMenu->addAction(tr("Crop and Add People"), this, SLOT(cropAndAddPeople()), Qt::CTRL + Qt::Key_2);
+
 
     menuBar()->addMenu(fileMenu);
 
     scene_ = scene;
 }
 
+void MainWindow::open(){
+    QString filename = QFileDialog::getOpenFileName(this,
+                                                tr("Select a file to open"),
+                                                QString(),
+                                                tr("XML file (*.xml)"));
+
+    if(!filename.isEmpty()){
+        scene_->clear();
+        g_PeopleConnectors.clear();
+        g_PeopleNodes.clear();
+
+        QDomDocument doc;
+
+        QFile file(filename);
+        if(file.open(QIODevice::ReadOnly)){
+            doc.setContent(file.readAll());
+
+            QDomElement root = doc.firstChildElement();
+
+            QDomNodeList peopleNodes = root.firstChildElement("people-nodes").childNodes();
+            for(int i=0; i<peopleNodes.count(); i++){
+                QDomElement elem = peopleNodes.at(i).toElement();
+                if(elem.tagName() == "people"){
+                    PeopleNode *node = new PeopleNode(elem.attribute("path"));
+                    node->setPos(elem.attribute("x").toDouble(), elem.attribute("y").toDouble());
+                    node->setLabel(elem.attribute("label"));
+                    scene_->addItem(node);
+                }
+            }
+
+            QDomNodeList peopleConnectors = root.firstChildElement("connectors").childNodes();
+            for(int i=0; i<peopleConnectors.count(); i++){
+                QDomElement elem = peopleConnectors.at(i).toElement();
+                if(elem.tagName() == "connector"){
+                    PeopleConnector *connector = new PeopleConnector;
+                    connector->set(
+                                g_PeopleNodes[elem.attribute("start").toInt()],
+                                g_PeopleNodes[elem.attribute("end").toInt()]
+                            );
+
+                    connector->setLabel(elem.attribute("label"));
+
+                    scene_->addItem(connector);
+
+                    connector->showLabel();
+                    connector->updatePos();
+                }
+            }
+
+        }
+    }
+}
+
+void MainWindow::save(){
+    QString filename = QFileDialog::getSaveFileName(this,
+                                                    tr("Select a file to save"),
+                                                    QString(),
+                                                    tr("XML file (*.xml)")
+                                                    );
+
+    if(!filename.isEmpty()){
+        saveToFile(filename);
+    }
+}
+
+void MainWindow::saveToFile(const QString &filename){
+    QDomDocument doc;
+
+    QDomElement root = doc.createElement("people-relation");
+
+    QDomElement people = doc.createElement("people-nodes");
+    for(int i=0; i<g_PeopleNodes.length(); i++){
+        PeopleNode *node = g_PeopleNodes[i];
+
+        QDomElement p = doc.createElement("people");
+        p.setAttribute("id", i);
+        p.setAttribute("x", node->x());
+        p.setAttribute("y", node->y());
+        p.setAttribute("path", node->filename());
+        p.setAttribute("label", node->label());
+
+        people.appendChild(p);
+    }
+
+    QDomElement connectors = doc.createElement("connectors");
+    foreach(PeopleConnector *connector, g_PeopleConnectors){
+        QDomElement n = doc.createElement("connector");
+
+        PeopleNode *start = qgraphicsitem_cast<PeopleNode *>(connector->start());
+        PeopleNode *end = qgraphicsitem_cast<PeopleNode *>(connector->end());
+
+        n.setAttribute("start", g_PeopleNodes.indexOf(start));
+        n.setAttribute("end", g_PeopleNodes.indexOf(end));
+        n.setAttribute("label", connector->label());
+
+        connectors.appendChild(n);
+    }
+
+    root.appendChild(people);
+    root.appendChild(connectors);
+
+    doc.appendChild(root);
+
+    QDomNode xmlNode = doc.createProcessingInstruction("xml","version=\"1.0\"");
+    doc.insertBefore(xmlNode, root);
+
+    QFile file(filename);
+    if(file.open(QIODevice::WriteOnly)){
+        QTextStream stream(&file);
+        stream << doc.toString();
+    }
+}
 
 void MainWindow::addPeople(){
     QStringList filenames = QFileDialog::getOpenFileNames(this,
@@ -302,7 +442,10 @@ void MainWindow::addPeopleFile(const QString &filename){
 }
 
 void MainWindow::cropAndAddPeople(){
-    QString filename = QFileDialog::getOpenFileName(this, tr("Select a people image (not cropped)"), QString(), tr("Image files (*.jpg *.png)"));
+    QString filename = QFileDialog::getOpenFileName(this,
+                                                    tr("Select a people image (not cropped)"),
+                                                    QString(),
+                                                    tr("Image files (*.jpg *.png)"));
     if(filename.isEmpty())
         return;
 

@@ -17,8 +17,11 @@ private slots:
     void addPeople();
     void cropAndAddPeople();
     void addPeopleFile(const QString &filename);
+    void save();
+    void open();
 
 private:
+    void saveToFile(const QString &filename);
     QGraphicsScene *scene_;
 };
 

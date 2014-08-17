@@ -283,11 +283,17 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 void MainWindow::addPeople(){
-    QString filename = QFileDialog::getOpenFileName(this, tr("Select a people image (cropped)"), QString(), tr("Image files (*.jpg *.png)"));
-    if(filename.isEmpty())
-        return;
+    QStringList filenames = QFileDialog::getOpenFileNames(this,
+                                                          tr("Select a people image (cropped)"),
+                                                          QString(),
+                                                          tr("Image files (*.jpg *.png)"));
 
-    addPeopleFile(filename);
+    for(int i=0; i<filenames.length(); i++){
+        PeopleNode *node = new PeopleNode(filenames[i]);
+        scene_->addItem(node);
+
+        node->setPos(i * 50, i* 50);
+    }
 }
 
 void MainWindow::addPeopleFile(const QString &filename){

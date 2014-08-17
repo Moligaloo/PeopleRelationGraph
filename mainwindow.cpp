@@ -355,6 +355,8 @@ void MainWindow::open(){
 
                     connector->showLabel();
                     connector->updatePos();
+
+                    g_PeopleConnectors << connector;
                 }
             }
 

@@ -14,6 +14,7 @@
 #include <QTextCursor>
 #include <QtDebug>
 #include <QDomDocument>
+#include <QKeyEvent>
 
 #include <qmath.h>
 
@@ -188,6 +189,7 @@ public:
     PeopleNode(const QString &filename){
         setFlag(ItemIsMovable);
         setFlag(ItemIsFocusable);
+        setFlag(ItemIsSelectable);
         setFlag(ItemSendsGeometryChanges);
 
         QPixmap pixmap(filename);
@@ -256,17 +258,6 @@ protected:
     }
 
 private:
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget){
-        QGraphicsPixmapItem::paint(painter, option, widget);
-
-        if(hasFocus()){
-            QPen pen(Qt::blue);
-
-            painter->setPen(pen);
-            painter->drawRect(boundingRect());
-        }
-    }
-
     QString filename_;
     QGraphicsTextItem *nameItem_;
     PeopleConnectControl *connectCtrl_;
@@ -298,15 +289,39 @@ MainWindow::MainWindow(QWidget *parent)
     fileMenu->addAction(tr("Open"), this, SLOT(open()), QKeySequence::Open);
     fileMenu->addAction(tr("Save"), this, SLOT(save()), QKeySequence::Save);
 
-    fileMenu->addSeparator();
-
-    fileMenu->addAction(tr("Add People"), this, SLOT(addPeople()), Qt::CTRL + Qt::Key_1);
-    fileMenu->addAction(tr("Crop and Add People"), this, SLOT(cropAndAddPeople()), Qt::CTRL + Qt::Key_2);
-
-
     menuBar()->addMenu(fileMenu);
 
+    QMenu *editMenu = new QMenu(tr("Edit"));
+
+    editMenu->addAction(tr("Add People"), this, SLOT(addPeople()), Qt::CTRL + Qt::Key_1);
+    editMenu->addAction(tr("Crop and Add People"), this, SLOT(cropAndAddPeople()), Qt::CTRL + Qt::Key_2);
+
+    menuBar()->addMenu(editMenu);
+
     scene_ = scene;
+}
+
+
+void MainWindow::keyReleaseEvent(QKeyEvent *event){
+    if(event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace){
+        foreach(QGraphicsItem *item, scene_->selectedItems()){
+            PeopleNode *people = qgraphicsitem_cast<PeopleNode *>(item);
+            if(people){
+                delete people;
+                g_PeopleNodes.removeOne(people);
+
+                QMutableListIterator<PeopleConnector *> itor(g_PeopleConnectors);
+                while(itor.hasNext()){
+                    PeopleConnector *connector = itor.next();
+
+                    if(connector->start() == people || connector->end() == people){
+                        delete connector;
+                        itor.remove();
+                    }
+                }
+            }
+        }
+    }
 }
 
 void MainWindow::open(){

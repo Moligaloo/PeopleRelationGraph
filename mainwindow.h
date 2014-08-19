@@ -20,6 +20,9 @@ private slots:
     void save();
     void open();
 
+protected:
+    void keyReleaseEvent(QKeyEvent *);
+
 private:
     void saveToFile(const QString &filename);
     QGraphicsScene *scene_;

@@ -162,7 +162,7 @@ public:
         if(connector_){
             QGraphicsItem *end = FindPeopleNodeUnderMouse();
 
-            if(end){
+            if(end && end != parentItem()){
                 connector_->set(parentItem(), end);
                 g_PeopleConnectors << connector_;
 

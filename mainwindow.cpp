@@ -343,11 +343,15 @@ void MainWindow::open(){
 
             QDomElement root = doc.firstChildElement();
 
+            QDir dir(QFileInfo(filename).dir());
+
             QDomNodeList peopleNodes = root.firstChildElement("people-nodes").childNodes();
             for(int i=0; i<peopleNodes.count(); i++){
                 QDomElement elem = peopleNodes.at(i).toElement();
                 if(elem.tagName() == "people"){
-                    PeopleNode *node = new PeopleNode(elem.attribute("path"));
+                    QString path = elem.attribute("path");
+                    QString fullpath = QFileInfo(path).isAbsolute() ? path : dir.absoluteFilePath(path);
+                    PeopleNode *node = new PeopleNode(fullpath);
                     node->setPos(elem.attribute("x").toDouble(), elem.attribute("y").toDouble());
                     node->setLabel(elem.attribute("label"));
                     scene_->addItem(node);
@@ -396,6 +400,8 @@ void MainWindow::saveToFile(const QString &filename){
 
     QDomElement root = doc.createElement("people-relation");
 
+    QDir dir(QFileInfo(filename).dir());
+
     QDomElement people = doc.createElement("people-nodes");
     for(int i=0; i<g_PeopleNodes.length(); i++){
         PeopleNode *node = g_PeopleNodes[i];
@@ -404,7 +410,7 @@ void MainWindow::saveToFile(const QString &filename){
         p.setAttribute("id", i);
         p.setAttribute("x", node->x());
         p.setAttribute("y", node->y());
-        p.setAttribute("path", node->filename());
+        p.setAttribute("path", dir.relativeFilePath(node->filename()));
         p.setAttribute("label", node->label());
 
         people.appendChild(p);
